@@ -1,6 +1,11 @@
 const express = require("express");
 const path = require("path");
-const { PORT, STOPS_SOURCE, VEHICLE_POS_SOURCE, GTFS_STATIC_SOURCE } = require("./src/config");
+const {
+  PORT,
+  STOPS_SOURCE,
+  GTFS_STATIC_SOURCE,
+  VEHICLE_SOURCE,
+} = require("./src/config");
 const { getBoundary } = require("./src/services/boundary");
 const { getStops } = require("./src/services/stops");
 const { getLines } = require("./src/services/lines");
@@ -59,7 +64,7 @@ app.get("/api/vehicles", async (_req, res) => {
     res.set("Cache-Control", "no-store");
     res.json({
       ...vehicles,
-      source: VEHICLE_POS_SOURCE,
+      source: VEHICLE_SOURCE,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

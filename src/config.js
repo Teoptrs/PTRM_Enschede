@@ -27,12 +27,26 @@ const OVERPASS_URL =
   process.env.OVERPASS_URL || "https://overpass-api.de/api/interpreter";
 const LINES_SOURCE = process.env.LINES_SOURCE || "overpass";
 
+const VEHICLE_PROVIDER = process.env.VEHICLE_PROVIDER || "ovapi";
+const OVAPI_BASE_URL = process.env.OVAPI_BASE_URL || "http://v0.ovapi.nl";
+const OVAPI_USER_AGENT = process.env.OVAPI_USER_AGENT || "enschede-bus-map";
+const OVAPI_LINE_LIST_TTL_MS = Number(
+  process.env.OVAPI_LINE_LIST_TTL_MS || 5 * 60 * 1000
+);
+const OVAPI_ACTUALS_TTL_MS = Number(
+  process.env.OVAPI_ACTUALS_TTL_MS || 15000
+);
+const OVAPI_BATCH_SIZE = Number(process.env.OVAPI_BATCH_SIZE || 25);
+
 const LINES_CACHE = path.join(CACHE_DIR, `lines_enschede_${LINES_SOURCE}.json`);
 
 const BOUNDARY_NAME = process.env.BOUNDARY_NAME || "enschede";
 const BOUNDARY_STATCODE = process.env.BOUNDARY_STATCODE || "";
 
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+const VEHICLE_SOURCE =
+  VEHICLE_PROVIDER === "ovapi" ? OVAPI_BASE_URL : VEHICLE_POS_SOURCE;
 
 module.exports = {
   PORT,
@@ -50,7 +64,14 @@ module.exports = {
   BOUNDARY_SOURCE,
   OVERPASS_URL,
   LINES_SOURCE,
+  VEHICLE_PROVIDER,
+  OVAPI_BASE_URL,
+  OVAPI_USER_AGENT,
+  OVAPI_LINE_LIST_TTL_MS,
+  OVAPI_ACTUALS_TTL_MS,
+  OVAPI_BATCH_SIZE,
   BOUNDARY_NAME,
   BOUNDARY_STATCODE,
   CACHE_TTL_MS,
+  VEHICLE_SOURCE,
 };

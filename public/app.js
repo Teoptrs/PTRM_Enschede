@@ -5,7 +5,7 @@ const lastUpdatedEl = document.getElementById("last-updated");
 const statusEl = document.getElementById("status");
 const refreshBtn = document.getElementById("refresh-btn");
 
-const refreshIntervalMs = 20000;
+const refreshIntervalMs = 30000;
 let vehicleTimer = null;
 
 const map = L.map("map", {
@@ -47,6 +47,15 @@ function setStatus(message, isError = false) {
   statusEl.classList.toggle("error", isError);
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 async function loadBoundary() {
   const res = await fetch("/api/boundary");
   if (!res.ok) throw new Error("Failed to load boundary");
@@ -60,19 +69,29 @@ async function loadStops() {
   const res = await fetch("/api/stops");
   if (!res.ok) throw new Error("Failed to load stops");
   const data = await res.json();
-  stopCountEl.textContent = data.count ?? data.stops?.length ?? "-";
+  const stops = Array.isArray(data.stops) ? data.stops : [];
+  stopCountEl.textContent = data.count ?? stops.length ?? "-";
 
-  data.stops.forEach((stop) => {
-    const marker = L.circleMarker([stop.lat, stop.lon], {
+  stopsLayer.clearLayers();
+  stops.forEach((stop) => {
+    const lat = Number(stop.lat);
+    const lon = Number(stop.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+
+    const name = escapeHtml(stop.name || "Stop");
+    const id = escapeHtml(stop.id || "");
+    const popup = id
+      ? `<strong>${name}</strong><br /><span>${id}</span>`
+      : `<strong>${name}</strong>`;
+
+    const marker = L.circleMarker([lat, lon], {
       radius: 4,
       color: "#1f2937",
       weight: 1,
       fillColor: "#94a3b8",
       fillOpacity: 0.6,
       pane: "stops",
-    }).bindPopup(
-      `<strong>${stop.name}</strong><br /><span>${stop.id}</span>`
-    );
+    }).bindPopup(popup);
     marker.addTo(stopsLayer);
   });
 }
@@ -81,17 +100,20 @@ async function loadLines() {
   const res = await fetch("/api/lines");
   if (!res.ok) throw new Error("Failed to load lines");
   const data = await res.json();
-  lineCountEl.textContent = data.count ?? data.lines?.length ?? "-";
+  const lines = Array.isArray(data.lines) ? data.lines : [];
+  lineCountEl.textContent = data.count ?? lines.length ?? "-";
 
-  data.lines.forEach((line) => {
-    const name =
-      line.shortName || line.longName || line.routeId || "Bus line";
-    const polyline = L.polyline(line.coords, {
+  linesLayer.clearLayers();
+  lines.forEach((line) => {
+    const coords = Array.isArray(line.coords) ? line.coords : [];
+    if (coords.length < 2) return;
+    const name = line.shortName || line.longName || line.routeId || "Bus line";
+    const polyline = L.polyline(coords, {
       color: line.color || "#2563eb",
       weight: 3,
       opacity: 0.75,
       pane: "lines",
-    }).bindPopup(`<strong>${name}</strong>`);
+    }).bindPopup(`<strong>${escapeHtml(name)}</strong>`);
     polyline.addTo(linesLayer);
   });
 }
@@ -106,52 +128,47 @@ async function refreshVehicles() {
   const res = await fetch("/api/vehicles", { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to load vehicles");
   const data = await res.json();
+  const vehicles = Array.isArray(data.vehicles) ? data.vehicles : [];
 
   vehiclesLayer.clearLayers();
-  data.vehicles.forEach((vehicle) => {
-    const candidate = String(vehicle.lineNumber || "").trim();
-    const rawFallback = String(vehicle.label || "").trim();
-    const fallbackOk =
-      rawFallback.length > 0 &&
-      (rawFallback.length <= 3 || /[a-zA-Z]/.test(rawFallback));
-    const label = candidate || (fallbackOk ? rawFallback : "?");
+  vehicles.forEach((vehicle) => {
+    const lat = Number(vehicle.lat);
+    const lon = Number(vehicle.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+
+    const label = String(vehicle.lineNumber || "").trim() || "?";
     const icon = L.divIcon({
       className: "bus-label",
-      html: `<span>${label}</span>`,
+      html: `<span>${escapeHtml(label)}</span>`,
       iconSize: [28, 22],
       iconAnchor: [14, 11],
     });
 
-    const marker = L.marker([vehicle.lat, vehicle.lon], {
+    const popupLabel = escapeHtml(
+      vehicle.lineNumber || vehicle.lineName || "Unknown"
+    );
+    const marker = L.marker([lat, lon], {
       icon,
       pane: "vehicles",
-    }).bindPopup(
-      `<strong>Bus</strong><br />${
-        vehicle.lineNumber ||
-        vehicle.lineName ||
-        vehicle.label ||
-        vehicle.id ||
-        "Unknown"
-      }`
-    );
+    }).bindPopup(`<strong>Bus</strong><br />${popupLabel}`);
     marker.addTo(vehiclesLayer);
   });
 
-  vehicleCountEl.textContent = data.vehicles.length;
+  vehicleCountEl.textContent = vehicles.length;
   lastUpdatedEl.textContent = formatTimestamp(
-    data.feedTimestamp || data.vehicles[0]?.timestamp
+    data.feedTimestamp || vehicles[0]?.timestamp
   );
 }
 
 async function init() {
   try {
-    setStatus("Loading boundary…");
+    setStatus("Loading boundary...");
     await loadBoundary();
-    setStatus("Loading stops…");
+    setStatus("Loading stops...");
     await loadStops();
-    setStatus("Loading lines…");
+    setStatus("Loading lines...");
     await loadLines();
-    setStatus("Loading vehicles…");
+    setStatus("Loading vehicles...");
     await refreshVehicles();
     setStatus("Live");
   } catch (err) {
@@ -164,18 +181,18 @@ async function init() {
       await refreshVehicles();
       setStatus("Live");
     } catch (err) {
-      setStatus("Live feed error. Retrying…", true);
+      setStatus("Live feed error. Retrying...", true);
     }
   }, refreshIntervalMs);
 }
 
 refreshBtn.addEventListener("click", async () => {
   try {
-    setStatus("Refreshing…");
+    setStatus("Refreshing...");
     await refreshVehicles();
     setStatus("Live");
   } catch (err) {
-    setStatus("Live feed error. Retrying…", true);
+    setStatus("Live feed error. Retrying...", true);
   }
 });
 
