@@ -21,6 +21,7 @@ Then open `http://localhost:3000`.
 
 - Stops: OpenOV haltes dataset (`stops.csv.gz`)
 - Vehicle positions: OVapi (KV78Turbo) line actuals (positions are timing point passes, not GPS)
+- Stop departures: OVapi stoparea departures
 - Enschede boundary: PDOK/CBS municipality boundaries OGC API (`gemeente_gegeneraliseerd`)
 - GTFS static: OpenOV GTFS zip (`gtfs-openov-nl.zip`)
 - Bus lines (default): OpenStreetMap via Overpass API
@@ -28,6 +29,7 @@ Then open `http://localhost:3000`.
 ## Notes
 
 - The server caches the boundary and filtered stops in `data/` for 7 days.
+- Some stops are not timing points in OVapi; departures will fall back to the nearest timing point and the UI will mark this as approximate.
 - If you need to override sources, set:
   - `STOPS_SOURCE`
   - `VEHICLE_PROVIDER` (`ovapi` or `gtfs-rt`)
@@ -37,6 +39,9 @@ Then open `http://localhost:3000`.
   - `OVAPI_USER_AGENT`
   - `OVAPI_LINE_LIST_TTL_MS`
   - `OVAPI_ACTUALS_TTL_MS`
+  - `OVAPI_DEPARTURES_TTL_MS`
+  - `OVAPI_STOPAREAS_TTL_MS`
+  - `STOPAREA_MATCH_RADIUS_M`
   - `OVAPI_BATCH_SIZE`
   - `BOUNDARY_SOURCE`
   - `GTFS_STATIC_SOURCE`

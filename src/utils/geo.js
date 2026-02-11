@@ -132,6 +132,24 @@ function distancePointToPolylineMeters(lat, lon, coords) {
   return min;
 }
 
+function distanceBetweenPointsMeters(lat1, lon1, lat2, lon2) {
+  if (
+    !Number.isFinite(lat1) ||
+    !Number.isFinite(lon1) ||
+    !Number.isFinite(lat2) ||
+    !Number.isFinite(lon2)
+  ) {
+    return Infinity;
+  }
+  const rad = Math.PI / 180;
+  const meanLat = (lat1 + lat2) / 2;
+  const cosLat = Math.cos(meanLat * rad);
+  const dx = (lon2 - lon1) * cosLat;
+  const dy = lat2 - lat1;
+  const metersPerDegree = 111320;
+  return Math.sqrt(dx * dx + dy * dy) * metersPerDegree;
+}
+
 module.exports = {
   pointInGeometry,
   computeBBox,
@@ -139,4 +157,5 @@ module.exports = {
   isLikelyWgs84,
   computeBBoxFromCoords,
   distancePointToPolylineMeters,
+  distanceBetweenPointsMeters,
 };

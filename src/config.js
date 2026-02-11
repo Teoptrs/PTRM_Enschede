@@ -8,6 +8,7 @@ const BOUNDARY_CACHE = path.join(CACHE_DIR, "boundary_enschede.geojson");
 const GTFS_CACHE = path.join(CACHE_DIR, "gtfs-static.zip");
 const ROUTES_CACHE = path.join(CACHE_DIR, "routes_map.json");
 const TRIPS_CACHE = path.join(CACHE_DIR, "trips_map.json");
+const STOPAREAS_CACHE = path.join(CACHE_DIR, "stopareas_map.json");
 
 const STOPS_SOURCE =
   process.env.STOPS_SOURCE || "https://data.openov.nl/haltes/stops.csv.gz";
@@ -36,6 +37,15 @@ const OVAPI_LINE_LIST_TTL_MS = Number(
 const OVAPI_ACTUALS_TTL_MS = Number(
   process.env.OVAPI_ACTUALS_TTL_MS || 15000
 );
+const OVAPI_DEPARTURES_TTL_MS = Number(
+  process.env.OVAPI_DEPARTURES_TTL_MS || 15000
+);
+const OVAPI_STOPAREAS_TTL_MS = Number(
+  process.env.OVAPI_STOPAREAS_TTL_MS || 6 * 60 * 60 * 1000
+);
+const STOPAREA_MATCH_RADIUS_M = Number(
+  process.env.STOPAREA_MATCH_RADIUS_M || 250
+);
 const OVAPI_BATCH_SIZE = Number(process.env.OVAPI_BATCH_SIZE || 25);
 
 const LINES_CACHE = path.join(CACHE_DIR, `lines_enschede_${LINES_SOURCE}.json`);
@@ -57,6 +67,7 @@ module.exports = {
   GTFS_CACHE,
   ROUTES_CACHE,
   TRIPS_CACHE,
+  STOPAREAS_CACHE,
   STOPS_SOURCE,
   VEHICLE_POS_SOURCE,
   TRIP_UPDATES_SOURCE,
@@ -69,6 +80,9 @@ module.exports = {
   OVAPI_USER_AGENT,
   OVAPI_LINE_LIST_TTL_MS,
   OVAPI_ACTUALS_TTL_MS,
+  OVAPI_DEPARTURES_TTL_MS,
+  OVAPI_STOPAREAS_TTL_MS,
+  STOPAREA_MATCH_RADIUS_M,
   OVAPI_BATCH_SIZE,
   BOUNDARY_NAME,
   BOUNDARY_STATCODE,

@@ -6,7 +6,10 @@ const statusEl = document.getElementById("status");
 const refreshBtn = document.getElementById("refresh-btn");
 
 const refreshIntervalMs = 30000;
+const stopDeparturesCacheTtlMs = 15000;
+const stopDeparturesLimit = 6;
 let vehicleTimer = null;
+const stopDeparturesCache = new Map();
 
 const map = L.map("map", {
   zoomControl: true,
@@ -56,6 +59,97 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+function formatShortTime(ts) {
+  if (!ts) return "-";
+  const date = new Date(ts * 1000);
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatCountdown(ts) {
+  if (!ts) return "";
+  const diffMs = ts * 1000 - Date.now();
+  const diffMin = Math.round(diffMs / 60000);
+  if (diffMin <= 0) return "now";
+  if (diffMin === 1) return "1 min";
+  return `${diffMin} min`;
+}
+
+function buildStopPopup(
+  stop,
+  { loading, error, departures, approximate, distanceM } = {}
+) {
+  const title = escapeHtml(stop.name || "Stop");
+  const stopId = escapeHtml(stop.id || "");
+  let html = `<div class="stop-popup">`;
+  html += `<div class="stop-popup-title">${title}</div>`;
+  if (stopId) {
+    html += `<div class="stop-popup-meta">Stop ${stopId}</div>`;
+  }
+  if (approximate && Number.isFinite(distanceM)) {
+    const distanceLabel =
+      distanceM >= 1000
+        ? `${(distanceM / 1000).toFixed(1)} km`
+        : `${distanceM} m`;
+    html += `<div class="stop-popup-note">Using nearby timing point (${distanceLabel})</div>`;
+  }
+
+  if (loading) {
+    html += `<div class="stop-popup-status">Loading departures...</div>`;
+  } else if (error) {
+    html += `<div class="stop-popup-status error">${escapeHtml(error)}</div>`;
+  } else {
+    const list = Array.isArray(departures) ? departures : [];
+    if (list.length === 0) {
+      html += `<div class="stop-popup-status">No upcoming departures.</div>`;
+    } else {
+      html += `<div class="stop-popup-list">`;
+      list.slice(0, stopDeparturesLimit).forEach((departure) => {
+        const line = escapeHtml(departure.lineNumber || "?");
+        const destination = escapeHtml(departure.destination || "Unknown");
+        const timeValue =
+          departure.time || departure.expectedTime || departure.targetTime;
+        const timeText = formatShortTime(timeValue);
+        const countdown = formatCountdown(timeValue);
+        const timeLabel = countdown
+          ? `${timeText} · ${countdown}`
+          : timeText;
+
+        html += `
+          <div class="stop-popup-row">
+            <div class="stop-popup-line">${line}</div>
+            <div class="stop-popup-dest" title="${destination}">${destination}</div>
+            <div class="stop-popup-time">${timeLabel}</div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+    }
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+async function fetchStopDepartures(stopId) {
+  if (!stopId) throw new Error("Missing stop ID.");
+  const now = Date.now();
+  const cached = stopDeparturesCache.get(stopId);
+  if (cached && now - cached.timestamp < stopDeparturesCacheTtlMs) {
+    return cached.data;
+  }
+
+  const res = await fetch(`/api/stops/${encodeURIComponent(stopId)}/departures`, {
+    cache: "no-store",
+  });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(payload.error || "Failed to load departures.");
+  }
+
+  stopDeparturesCache.set(stopId, { timestamp: now, data: payload });
+  return payload;
+}
+
 async function loadBoundary() {
   const res = await fetch("/api/boundary");
   if (!res.ok) throw new Error("Failed to load boundary");
@@ -78,12 +172,6 @@ async function loadStops() {
     const lon = Number(stop.lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
 
-    const name = escapeHtml(stop.name || "Stop");
-    const id = escapeHtml(stop.id || "");
-    const popup = id
-      ? `<strong>${name}</strong><br /><span>${id}</span>`
-      : `<strong>${name}</strong>`;
-
     const marker = L.circleMarker([lat, lon], {
       radius: 4,
       color: "#1f2937",
@@ -91,7 +179,32 @@ async function loadStops() {
       fillColor: "#94a3b8",
       fillOpacity: 0.6,
       pane: "stops",
-    }).bindPopup(popup);
+    });
+
+    marker.bindPopup(buildStopPopup(stop, { loading: true }));
+    marker.on("click", async () => {
+      const popup = marker.getPopup();
+      popup.setContent(buildStopPopup(stop, { loading: true }));
+      marker.openPopup();
+
+      try {
+        const data = await fetchStopDepartures(stop.id);
+        const departures = Array.isArray(data.departures) ? data.departures : [];
+        popup.setContent(
+          buildStopPopup(stop, {
+            departures,
+            approximate: data.approximate,
+            distanceM: data.distanceM,
+          })
+        );
+      } catch (err) {
+        popup.setContent(
+          buildStopPopup(stop, {
+            error: err.message || "Failed to load departures.",
+          })
+        );
+      }
+    });
     marker.addTo(stopsLayer);
   });
 }

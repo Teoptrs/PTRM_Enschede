@@ -119,6 +119,73 @@ main {
   line-height: 1;
 }
 
+.stop-popup {
+  min-width: 220px;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.stop-popup-title {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.stop-popup-meta {
+  font-size: 12px;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+.stop-popup-note {
+  font-size: 12px;
+  color: #0f766e;
+  margin-bottom: 8px;
+}
+
+.stop-popup-status {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.stop-popup-status.error {
+  color: #b91c1c;
+}
+
+.stop-popup-list {
+  display: grid;
+  gap: 6px;
+}
+
+.stop-popup-row {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.stop-popup-line {
+  background: #ef4444;
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  text-align: center;
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
+.stop-popup-dest {
+  font-size: 12px;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stop-popup-time {
+  font-size: 12px;
+  color: #334155;
+  white-space: nowrap;
+}
+
 .legend-line {
   width: 18px;
   height: 4px;
